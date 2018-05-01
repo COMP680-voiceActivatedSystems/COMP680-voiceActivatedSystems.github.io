@@ -14,7 +14,7 @@ let APP_ID = 'amzn1.ask.skill.a1aafc00-fb28-48c1-be51-2bc7db0d7ee7';
 
 // URL to get the .ics from, in this instance we are getting from Stanford however this can be changed
 //const URL = 'http://events.stanford.edu/eventlist.ics';
-const URL = 'https://s3.amazonaws.com/csuncalendar/2018.ics';
+const URL = 'https://www.csun.edu/feeds/ics/events/55816/calexport.ics/2018?og_ajax_context__gid=55816&og_ajax_context__group_type=node';
 
 // Skills name
 const skillName = "C sun calendar:";
@@ -76,6 +76,9 @@ let output = "";
 // stores events that are found to be in our date range
 let relevantEvents = new Array();
 
+// array to store all events
+let eventList = null;
+
 // Adding session handlers
 const newSessionHandlers = {
     'LaunchRequest': function () {
@@ -83,7 +86,7 @@ const newSessionHandlers = {
         this.response.speak(skillName + " " + welcomeMessage).listen(welcomeMessage);
         this.emit(':responseReady');
     },
-    "searchIntent": function()
+    'searchIntent': function()
     {
         this.handler.state = states.SEARCHMODE;
         this.emitWithState("searchIntent");
@@ -113,7 +116,6 @@ const startSearchHandlers = Alexa.CreateStateHandler(states.SEARCHMODE, {
 
     'searchIntent': function () {
         // Declare variables
-        let eventList = new Array();
         const slotValue = this.event.request.intent.slots.date.value;
 
         if (slotValue != undefined)
@@ -122,25 +124,14 @@ const startSearchHandlers = Alexa.CreateStateHandler(states.SEARCHMODE, {
 
             // Using the iCal library I pass the URL of where we want to get the data from.
             //ical.fromURL(URL, {}, function (error, data) {
-              var data = ical.parseFile('./events.ics');
-              //console.log(data);
-              if( data != null )
-              {
-                // Loop through all iCal data found
-                for (let k in data) {
-                    if (data.hasOwnProperty(k)) {
-                        let ev = data[k];
-                        // Pick out the data relevant to us and create an object to hold it.
-                        let eventData = {
-                            summary: removeTags(ev.summary),
-                            location: removeTags(ev.location),
-                            description: removeTags(ev.description),
-                            start: ev.start
-                        };
-                        // add the newly created object to an array for use later.
-                        eventList.push(eventData);
-                    }
+                eventList = new Array();
+
+                // fetch all events
+                for (let i = 2018; i <= 2018; i++) {
+                    appendToEventList(i);
                 }
+
+
                 // Check we have data
                 if (eventList.length > 0) {
                     // Read slot data and parse out a usable date
@@ -205,7 +196,7 @@ const startSearchHandlers = Alexa.CreateStateHandler(states.SEARCHMODE, {
                     this.response.speak(output).listen(output);
                 }
             //});
-          }
+          //}
         }
         else{
             this.response.speak("I'm sorry.  What day did you want me to look for events?").listen("I'm sorry.  What day did you want me to look for events?");
@@ -262,6 +253,12 @@ const descriptionHandlers = Alexa.CreateStateHandler(states.DESCRIPTION, {
         }
 
         this.emit(':responseReady');
+    },
+
+    'searchIntent': function()
+    {
+        this.handler.state = states.SEARCHMODE;
+        this.emitWithState("searchIntent");
     },
 
     'AMAZON.HelpIntent': function () {
@@ -424,4 +421,26 @@ function getEventsBeweenDates(startDate, endDate, eventList) {
 
     console.log("FOUND " + data.length + " events between those times");
     return data;
+}
+
+// Loops though the events from the iCal data, and stores in eventList
+function appendToEventList(year) {
+
+    var data = ical.parseFile('./'+year+'.ics');
+
+    // Loop through all iCal data found
+    for (let k in data) {
+        if (data.hasOwnProperty(k)) {
+            let ev = data[k];
+            // Pick out the data relevant to us and create an object to hold it.
+            let eventData = {
+                summary: removeTags(ev.summary),
+                location: removeTags(ev.location),
+                description: removeTags(ev.description),
+                start: ev.start
+            };
+            // add the newly created object to an array for use later.
+            eventList.push(eventData);
+        }
+    }
 }
