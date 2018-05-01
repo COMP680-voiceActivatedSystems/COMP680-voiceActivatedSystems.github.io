@@ -287,6 +287,11 @@ const descriptionHandlers = Alexa.CreateStateHandler(states.DESCRIPTION, {
         this.emit(':responseReady');
     },
 
+    'AMAZON.RepeatIntent': function () {
+        this.response.speak(output).listen(output);
+        this.emit(':responseReady');
+    },
+
     'SessionEndedRequest': function () {
         this.emit('AMAZON.StopIntent');
     },
