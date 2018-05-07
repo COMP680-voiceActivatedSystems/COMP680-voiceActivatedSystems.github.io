@@ -9,3 +9,9 @@ Technology Stack:
   <li>AWS Lambda</li>
   <li>Alexa Skills Kit</li>
   </ul>
+
+Testing:
+<ul>
+  <li>Bespoken</li>
+  <li>Mocha</li>
+  </ul>
