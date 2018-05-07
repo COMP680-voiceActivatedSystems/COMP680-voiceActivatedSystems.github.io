@@ -17,13 +17,13 @@ let APP_ID = 'amzn1.ask.skill.a1aafc00-fb28-48c1-be51-2bc7db0d7ee7';
 const URL = 'https://www.csun.edu/feeds/ics/events/55816/calexport.ics/2018?og_ajax_context__gid=55816&og_ajax_context__group_type=node';
 
 // Skills name
-const skillName = "C sun calendar:";
+const skillName = "C. sun calendar:";
 
 // Message when the skill is first called
-const welcomeMessage = "You can ask for the events today. Search for events by date. or say help. What would you like? ";
+const welcomeMessage = "You can ask for the events today. Search for events by date. or say help. What would you like?";
 
 // Message for help intent
-const HelpMessage = "Here are some things you can say: Get me events for today. Tell me whats happening on the 18th of July. What events are happening next week? Get me stuff happening tomorrow. ";
+const HelpMessage = "Here are some things you can say: Get me events for today. Tell me whats happening on the 18th of July. What events are happening next week? Get me stuff happening tomorrow.";
 
 const descriptionStateHelpMessage = "Here are some things you can say: Tell me about event one";
 
@@ -60,7 +60,7 @@ const dateOutOfRange = "Date is out of range please choose another date";
 const eventOutOfRange = "Event number is out of range please choose another event";
 
 // Used when an event is asked for
-const descriptionMessage = "Here's the description ";
+const descriptionMessage = "Here's the description: ";
 
 // Used when an event is asked for
 const killSkillMessage = "Ok, great, see you next time.";
@@ -86,11 +86,37 @@ const newSessionHandlers = {
         this.response.speak(skillName + " " + welcomeMessage).listen(welcomeMessage);
         this.emit(':responseReady');
     },
+
+    'AMAZON.NoIntent': function () {
+        this.response.speak(shutdownMessage);
+        this.emit(':responseReady');
+    },
+
+    'AMAZON.RepeatIntent': function () {
+        this.response.speak(welcomeMessage).listen(HelpMessage);
+        this.emit(':responseReady');
+    },
+
+    'AMAZON.StopIntent': function () {
+        this.response.speak(killSkillMessage);
+        this.emit(':responseReady');
+    },
+
+    'AMAZON.CancelIntent': function () {
+        this.response.speak(killSkillMessage);
+        this.emit(':responseReady');
+    },
+
+    'SessionEndedRequest': function () {
+        this.emit('AMAZON.StopIntent');
+    },
+
     'searchIntent': function()
     {
         this.handler.state = states.SEARCHMODE;
         this.emitWithState("searchIntent");
     },
+
     'Unhandled': function () {
         this.response.speak(HelpMessage).listen(HelpMessage);
         this.emit(':responseReady');
@@ -160,20 +186,20 @@ const startSearchHandlers = Alexa.CreateStateHandler(states.SEARCHMODE, {
 
                             if (relevantEvents[0] != null) {
                                 let date = new Date(relevantEvents[0].start);
-                                output += utils.format(eventSummary, "First", removeTags(relevantEvents[0].summary), relevantEvents[0].location, date.toDateString() + ".");
+                                output += utils.format(eventSummary, "First", removeTags(relevantEvents[0].summary), removeTags(relevantEvents[0].location), date.toDateString() + ".");
                             }
                             if (relevantEvents[1]) {
                                 let date = new Date(relevantEvents[1].start);
-                                output += utils.format(eventSummary, "Second", removeTags(relevantEvents[1].summary), relevantEvents[1].location, date.toDateString() + ".");
+                                output += utils.format(eventSummary, "Second", removeTags(relevantEvents[1].summary), removeTags(relevantEvents[1].location), date.toDateString() + ".");
                             }
                             if (relevantEvents[2]) {
                                 let date = new Date(relevantEvents[2].start);
-                                output += utils.format(eventSummary, "Third", removeTags(relevantEvents[2].summary), relevantEvents[2].location, date.toDateString() + ".");
+                                output += utils.format(eventSummary, "Third", removeTags(relevantEvents[2].summary), removeTags(relevantEvents[2].location), date.toDateString() + ".");
                             }
 
                             for (let i = 0; i < relevantEvents.length; i++) {
                                 let date = new Date(relevantEvents[i].start);
-                                cardContent += utils.format(cardContentSummary, removeTags(relevantEvents[i].summary), removeTags(relevantEvents[i].location), date.toDateString()+ "\n\n");
+                                cardContent += utils.format(cardContentSummary, relevantEvents[i].summary, relevantEvents[i].location, date.toDateString()+ "\n\n");
                             }
 
                             output += eventNumberMoreInfoText;
@@ -213,10 +239,12 @@ const startSearchHandlers = Alexa.CreateStateHandler(states.SEARCHMODE, {
 
     'AMAZON.StopIntent': function () {
         this.response.speak(killSkillMessage);
+        this.emit(':responseReady');
     },
 
     'AMAZON.CancelIntent': function () {
         this.response.speak(killSkillMessage);
+        this.emit(':responseReady');
     },
 
     'SessionEndedRequest': function () {
@@ -235,18 +263,21 @@ const descriptionHandlers = Alexa.CreateStateHandler(states.DESCRIPTION, {
 
         const reprompt = " Would you like to hear another event?";
         let slotValue = this.event.request.intent.slots.number.value;
+        let cardContent = "";
 
         // parse slot value
         const index = parseInt(slotValue, 10) - 1;
 
         if (relevantEvents[index]) {
 
+            cardContent = descriptionMessage + relevantEvents[index].description;
+
             // use the slot value as an index to retrieve description from our relevant array
             output = descriptionMessage + removeTags(relevantEvents[index].description);
 
             output += reprompt;
 
-            this.response.cardRenderer(relevantEvents[index].summary, output);
+            this.response.cardRenderer(relevantEvents[index].summary, cardContent);
             this.response.speak(output).listen(reprompt);
         } else {
             this.response.speak(eventOutOfRange).listen(welcomeMessage);
@@ -320,6 +351,13 @@ function removeTags(str) {
         str = str.replace(/&/g, 'and');
         str = str.replace(/\//g, '\'');
         str = str.replace(/\+/g, 'plus');
+        return str;
+    }
+}
+
+// Remove HTML tags from string
+function removeTagsForCard(str) {
+    if (str) {
         return str.replace(/<(?:.|\n)*?>/gm, '');
     }
 }
@@ -423,7 +461,6 @@ function getEventsBeweenDates(startDate, endDate, eventList) {
             data.push(eventList[i]);
         }
     }
-
     console.log("FOUND " + data.length + " events between those times");
     return data;
 }
@@ -439,9 +476,9 @@ function appendToEventList(year) {
             let ev = data[k];
             // Pick out the data relevant to us and create an object to hold it.
             let eventData = {
-                summary: removeTags(ev.summary),
-                location: removeTags(ev.location),
-                description: removeTags(ev.description),
+                summary: removeTagsForCard(ev.summary),
+                location: removeTagsForCard(ev.location),
+                description: removeTagsForCard(ev.description),
                 start: ev.start
             };
             // add the newly created object to an array for use later.
